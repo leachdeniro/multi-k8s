@@ -1,0 +1,476 @@
+Nginx fix for React Router
+--------------------------
+In the next lecture, we will be adding some Nginx config to the client-side project, but I neglected to add one line that would 
+get the Nginx server to work correctly when using React Router!
+
+In the client/nginx/default.conf file, please add the following line to the end of the location directive:
+
+    try_files $uri $uri/ /index.html;
+
+The default.conf should now look like this:
+
+server {
+  listen 3000;
+ 
+  location / {
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+    try_files $uri $uri/ /index.html;
+  }
+}
+
+
+Fix for Failing Travis Builds
+-----------------------------
+In the upcoming lecture, we will be adding a script to our .travis.yml file. Due to a change in how the Jest library works with Create React App, we need to make a small modification:
+
+script:
+  - docker run USERNAME/react-test npm test -- --coverage
+instead should be:
+
+script:
+  - docker run -e CI=true USERNAME/react-test npm test
+You can read up on the CI=true variable here:
+
+https://facebook.github.io/create-react-app/docs/running-tests#linux-macos-bash
+
+and environment variables in Docker here:
+
+https://docs.docker.com/engine/reference/run/#env-environment-variables
+
+Additionally, you may want to set the following property if your travis build fails with “rakefile not found” by adding to the top of your .travis.yml file:
+
+language: generic 
+
+AWS Configuration Cheat Sheet - Updated for new UI
+-------------------------------------------------- 
+updated 6-26-2020
+confirmed working as of 10-15-2020
+
+This lecture note is not intended to be a replacement for the videos, but to serve as a cheat sheet for students who want to quickly run thru the AWS configuration steps or easily see if they missed a step. It will also help navigate through the changes to the AWS UI since the course was recorded.
+
+EBS Application Creation
+
+Go to AWS Management Console and use Find Services to search for Elastic Beanstalk
+
+Click “Create Application”
+
+Set Application Name to 'multi-docker'
+
+Scroll down to Platform and select Docker
+
+In Platform Branch, select Multi-Container Docker running on 64bit Amazon Linux
+
+Click Create Application
+
+You may need to refresh, but eventually, you should see a green checkmark underneath Health.
+
+RDS Database Creation
+
+Go to AWS Management Console and use Find Services to search for RDS
+
+Click Create database button
+
+Select PostgreSQL
+
+In Templates, check the Free tier box.
+
+Scroll down to Settings.
+
+Set DB Instance identifier to multi-docker-postgres
+
+Set Master Username to postgres
+
+Set Master Password to postgrespassword and confirm.
+
+Scroll down to Connectivity. Make sure VPC is set to Default VPC
+
+Scroll down to Additional Configuration and click to unhide.
+
+Set Initial database name to fibvalues
+
+Scroll down and click Create Database button
+
+
+ElastiCache Redis Creation
+--------------------------
+
+Go to AWS Management Console and use Find Services to search for ElastiCache
+
+Click Redis in sidebar
+
+Click the Create button
+
+Make sure Cluster Mode Enabled is NOT ticked
+
+In Redis Settings form, set Name to multi-docker-redis
+
+Change Node type to 'cache.t2.micro'
+
+Change Replicas per Shard to 0
+
+Scroll down and click Create button
+
+Creating a Custom Security Group
+
+Go to AWS Management Console and use Find Services to search for VPC
+
+Find the Security section in the left sidebar and click Security Groups
+
+Click Create Security Group button
+
+Set Security group name to multi-docker
+
+Set Description to multi-docker
+
+Make sure VPC is set to default VPC
+
+Click Create Button
+
+Scroll down and click Inbound Rules
+
+Click Edit Rules button
+
+Click Add Rule
+
+Set Port Range to 5432-6379
+
+Click in the box next to Source and start typing 'sg' into the box. Select the Security Group you just created.
+
+Click Create Security Group
+
+Applying Security Groups to ElastiCache
+
+Go to AWS Management Console and use Find Services to search for ElastiCache
+
+Click Redis in Sidebar
+
+Check the box next to Redis cluster
+
+Click Actions and click Modify
+
+Click the pencil icon to edit the VPC Security group. Tick the box next to the new multi-docker group and click Save
+
+Click Modify
+
+Applying Security Groups to RDS
+
+Go to AWS Management Console and use Find Services to search for RDS
+
+Click Databases in Sidebar and check the box next to your instance
+
+Click Modify button
+
+Scroll down to Network and Security and add the new multi-docker security group
+
+Scroll down and click Continue button
+
+Click Modify DB instance button
+
+Applying Security Groups to Elastic Beanstalk
+
+Go to AWS Management Console and use Find Services to search for Elastic Beanstalk
+
+Click Environments in the left sidebar.
+
+Click MultiDocker-env
+
+Click Configuration
+
+In the Instances row, click the Edit button.
+
+Scroll down to EC2 Security Groups and tick box next to multi-docker
+
+Click Apply and Click Confirm
+
+After all the instances restart and go from No Data to Severe, you should see a green checkmark under Health.
+
+
+
+Add AWS configuration details to .travis.yml file's deploy script
+
+Set the region. The region code can be found by clicking the region in the toolbar next to your username.
+eg: 'us-east-1'
+
+app should be set to the EBS Application Name
+eg: 'multi-docker'
+
+env should be set to your EBS Environment name.
+eg: 'MultiDocker-env'
+
+Set the bucket_name. This can be found by searching for the S3 Storage service. Click the link for the elasticbeanstalk bucket that matches your region code and copy the name.
+
+eg: 'elasticbeanstalk-us-east-1-923445599289'
+
+Set the bucket_path to 'docker-multi'
+
+Set access_key_id to $AWS_ACCESS_KEY
+
+Set secret_access_key to $AWS_SECRET_KEY
+
+Setting Environment Variables
+
+Go to AWS Management Console and use Find Services to search for Elastic Beanstalk
+
+Click Environments in the left sidebar.
+
+Click MultiDocker-env
+
+Click Configuration
+
+In the Software row, click the Edit button
+
+Scroll down to Environment properties
+
+In another tab Open up ElastiCache, click Redis and check the box next to your cluster. Find the Primary Endpoint and copy that value but omit the :6379
+
+Set REDIS_HOST key to the primary endpoint listed above, remember to omit :6379
+
+Set REDIS_PORT to 6379
+
+Set PGUSER to postgres
+
+Set PGPASSWORD to postgrespassword
+
+In another tab, open up the RDS dashboard, click databases in the sidebar, click your instance and scroll to Connectivity and Security. Copy the endpoint.
+
+Set the PGHOST key to the endpoint value listed above.
+
+Set PGDATABASE to fibvalues
+
+Set PGPORT to 5432
+
+Click Apply button
+
+After all instances restart and go from No Data, to Severe, you should see a green checkmark under Health.
+
+IAM Keys for Deployment
+
+You can use the same IAM User's access and secret keys from the single container app we created earlier.
+
+AWS Keys in Travis
+
+Go to your Travis Dashboard and find the project repository for the application we are working on.
+
+On the repository page, click "More Options" and then "Settings"
+
+Create an AWS_ACCESS_KEY variable and paste your IAM access key
+
+Create an AWS_SECRET_KEY variable and paste your IAM secret key
+
+Deploying App
+
+Make a small change to your src/App.js file in the greeting text.
+
+In the project root, in your terminal run:
+
+git add.
+git commit -m “testing deployment"
+git push origin master
+Go to your Travis Dashboard and check the status of your build.
+
+The status should eventually return with a green checkmark and show "build passing"
+
+Go to your AWS Elasticbeanstalk application
+
+It should say "Elastic Beanstalk is updating your environment"
+
+It should eventually show a green checkmark under "Health". You will now be able to access your application at the external URL provided under the environment name.
+
+Pantalla completa
+Ir a la clase anterior165. Forming Container Links
+Ir a la siguiente clase167. Creating the EB Environment
+
+
+Travis Keys Update
+------------------
+In the upcoming lecture, we will be adding our AWS variables to the deploy script of the .travis.yml file. 
+There is a slight change that will be required, otherwise, you will get an error when Travis attempts to run your code.
+
+The code will now look like this:
+
+access_key_id: $AWS_ACCESS_KEY
+secret_access_key: $AWS_SECRET_KEY
+
+The full deploy section will look like this:
+
+deploy:
+  provider: elasticbeanstalk
+  region: 'us-east-1'
+  app: 'multi-docker'
+  env: 'MultiDocker-env'
+  bucket_name: 'elasticbeanstalk-us-east-1-923445559289'
+  bucket_path: 'docker-multi'
+  on:
+    branch: master
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
+
+
+
+
+
+
+  Quick Note to Prevent an Error
+  ------------------------------
+
+updated 4-16-2020
+
+In the upcoming lecture, Stephen will be creating the client-pod.yaml configuration file. You may get a blank page with an error 
+in your console when you attempt to run the pod or deployment in a future lecture:
+
+react-dom.production.min.js:209 TypeError: this.state.seenIndexes.map is not a function
+
+This is because we added the following line to our client/nginx/default.conf file in the earlier Docker lectures:
+
+try_files $uri $uri/ /index.html;
+
+This line was added to resolve some React Router issues our client app was having. However, it will break this demo because we have no
+ Nginx container or Ingress service in place.
+
+The best way to resolve this is to use Stephen's Client image in the pod and deployment for these demos, instead of your own:
+
+image: stephengrider/multi-client
+
+To be clear, this issue will not affect the multi-container Kubernetes project we will be building in Section 14. This is just a 
+quick demo and we will not be reusing these files.
+
+
+Important Note about Expected Postgres Error
+--------------------------------------------
+updated 4-27-2020
+
+In the upcoming lecture, we will be creating a Postgres deployment and then applying the changes. At about 5:21 In the video lecture, 
+Stephen will show the Postgres pod in a running state. Due to a change in the Postgres base image that we are using, this is no 
+longer true. If your Postgres pod is showing an error, this is 100% expected and does not currently need to be resolved. We will need 
+to add environment variables to our pods starting with the "Defining Environment Variables" lecture. The Postgres pod should be in
+ a running state by the "Environment Variables as Strings" lecture.
+
+You will most certainly see an error like this:
+
+    client-deployment-56969998db-7cgcd 1/1 Running 0 21s
+    client-deployment-56969998db-qtjvs 1/1 Running 0 29s
+    client-deployment-56969998db-src86 1/1 Running 0 38s
+    postgres-deployment-6d786d877-hc2ht 0/1 CrashLoopBackOff 1  23s
+    redis-deployment-587949d9f6-ght9r 1/1 Running 0 17m
+    server-deployment-76955dc4c7-6qqgj 1/1 Running 0 26s
+    server-deployment-76955dc4c7-bfxkm 1/1 Running 0 37s
+    server-deployment-76955dc4c7-ktdjv 1/1 Running 0 21s
+    worker-deployment-79496f4856-z9qng 1/1 Running 0 37s
+
+
+If we run kubectl log postgres-deployment-6d786d877-fqdtg we will be able to see why:
+
+    Error: Database is uninitialized and superuser password is not specified.
+    You must specify POSTGRES_PASSWORD to a non-empty value for the
+    superuser. For example, "-e POSTGRES_PASSWORD=password" on "docker run".
+    You may also use "POSTGRES_HOST_AUTH_METHOD=trust" to allow all
+    connections without a password. This is *not* recommended.
+    See PostgreSQL documentation about "trust":
+    https://www.postgresql.org/docs/current/auth-trust.html
+
+As mentioned, we will be setting these variables by the end of the current section.
+
+
+Postgres Environment Variable Fix
+---------------------------------
+updated 10-12-2020
+
+Due to a recent change in the official Postgres image hosted on the DockerHub we need to make a change to our environment variables.
+
+When adding the name variable to the postgres-deployment.yaml file, instead of using the following:
+
+    env:
+      - name: PGPASSWORD
+
+Change to:
+
+    env:
+      - name: POSTGRES_PASSWORD
+
+DO NOT update the server deployment's environment variables. This update only applies to the postgres-deployment.yaml
+
+
+Update on Ingress Nginx Mandatory Commands
+------------------------------------------
+In the upcoming lecture, we will be installing Ingress Nginx. In the video, it is shown that there is a required mandatory command 
+that needed to be run for all providers. This has since been removed, so, the provider-specific commands (Docker Desktop, Minikube, etc) are all that is required.
+
+https://kubernetes.github.io/ingress-nginx/deploy/#provider-specific-steps
+
+
+Ingress Update "this.state.seenIndexes.map is not a function" / 404 errors
+--------------------------------------------------------------------------
+updated 5-12-2021
+
+In the upcoming lecture, we will be creating our ingress-service.yaml configuration file. Since the recording of the lecture, 
+there has been an update on how we need to specify some of these rules.
+
+Most recently a change in how ingress-nginx handles regexes is causing 404 errors both locally and on Google Cloud. We also need to 
+add a capture group and annotations which will resolve the TypeError: this.state.seenIndexes.map is not a function error you might see 
+later in the course. Lastly, we should update the API version that is being used.
+v1beta1 API
+
+Note - this API version will only be supported through Kubernetes v1.22. Scroll further down for the v1 version.
+
+Four lines need to be updated and one line needs to be added:
+
+    apiVersion: networking.k8s.io/v1beta1
+    # UPDATE THE API
+    kind: Ingress
+    metadata:
+      name: ingress-service
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/use-regex: 'true'
+        # ADD THIS LINE ABOVE
+        nginx.ingress.kubernetes.io/rewrite-target: /$1
+        # UPDATE THIS LINE ABOVE
+    spec:
+      rules:
+        - http:
+            paths:
+              - path: /?(.*)
+              # UPDATE THIS LINE ABOVE
+                backend:
+                  serviceName: client-cluster-ip-service
+                  servicePort: 3000
+              - path: /api/?(.*)
+              # UPDATE THIS LINE ABOVE
+                backend:
+                  serviceName: server-cluster-ip-service
+                  servicePort: 5000
+
+v1 API
+
+
+Documentation link for reference:
+
+https://kubernetes.io/docs/concepts/services-networking/ingress/
+
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: ingress-service
+      annotations:
+        kubernetes.io/ingress.class: "nginx"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+        nginx.ingress.kubernetes.io/rewrite-target: /$1
+    spec:
+      rules:
+        - http:
+            paths:
+              - path: /?(.*)
+                pathType: Prefix
+                backend:
+                  service:
+                    name: client-cluster-ip-service
+                    port:
+                      number: 3000
+              - path: /api/?(.*)
+                pathType: Prefix
+                backend:
+                  service:
+                    name: server-cluster-ip-service
+                    port:
+                      number: 5000
