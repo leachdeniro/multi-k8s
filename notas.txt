@@ -535,3 +535,26 @@ https://docs.travis-ci.com/user/migrate/open-source-repository-migration#migrati
 You can also get an iv undefined error if you've passed the wrong repo to the file encryption or passed a repo name 
 with a typo in it. Please note, after the migration, or after fixing a typo, you'll need to run through the entire 
 encryption process again.
+
+
+Fix For Failing Travis Builds
+-----------------------------
+In the upcoming lecture, we will be adding a script to our .travis.yml file. Similar to our previous projects that ran tests using Travis, we need to
+ make sure that the tests exit after running and don't cause our builds to fail.
+
+Make sure to change this script:
+
+    script:
+      - docker run USERNAME/react-test npm test -- --coverage
+
+To use the CI flag and remove coverage:
+
+    script:
+      - docker run -e CI=true USERNAME/react-test npm test
+
+
+Quick Note about the Default Backend
+------------------------------------
+In the next lecture, you will see the Services dashboard showing an ingress controller and default backend. 
+A default backend no longer ships with ingress-nginx, so, if you only see a controller and you get a 404 Not 
+Found when visiting the IP address, this is perfectly expected. 
