@@ -17,7 +17,7 @@ function App() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Aprender Docker con Kubernetes
+            Fib con Kubernetes en GCP
           </a>
           <Link to="/">Home</Link>
           <Link to="/otherpage">Other Page</Link>
